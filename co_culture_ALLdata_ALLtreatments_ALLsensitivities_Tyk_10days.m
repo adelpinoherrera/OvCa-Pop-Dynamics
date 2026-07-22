@@ -1,0 +1,538 @@
+% ALL DATA
+%RE-PARAMETERIZE co-culture equations using all the data and
+%re-parameterize only rS, K, alphaS and rR (most sensitive parameters)
+%days, 4 parameters
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+%Import co-culture data and format it 
+clear all;
+outdir = '/blue/ferrallm/01_analysis/adelpinoherrera_OvCa-Aim2-MathModelingMATLAB/Tyk/clean_parameterization/results/Tyk_coculture';
+
+coculture_files = {'/blue/ferrallm/01_analysis/adelpinoherrera_OvCa-Aim2-MathModelingMATLAB/Tyk/clean_parameterization/data/ce0_75S25R_cellsinwell.csv',
+    '/blue/ferrallm/01_analysis/adelpinoherrera_OvCa-Aim2-MathModelingMATLAB/Tyk/clean_parameterization/data/ce0_50S50R_cellsinwell.csv',
+    '/blue/ferrallm/01_analysis/adelpinoherrera_OvCa-Aim2-MathModelingMATLAB/Tyk/clean_parameterization/data/ce0_25S75R_cellsinwell.csv',
+    '/blue/ferrallm/01_analysis/adelpinoherrera_OvCa-Aim2-MathModelingMATLAB/Tyk/clean_parameterization/data/ce1_75S25R_cellsinwell.csv',
+    '/blue/ferrallm/01_analysis/adelpinoherrera_OvCa-Aim2-MathModelingMATLAB/Tyk/clean_parameterization/data/ce1_50S50R_cellsinwell.csv',
+    '/blue/ferrallm/01_analysis/adelpinoherrera_OvCa-Aim2-MathModelingMATLAB/Tyk/clean_parameterization/data/ce1_25S75R_cellsinwell.csv'}
+
+coculture_data = cell(6,1);
+S_raw_all = cell(6,1); R_raw_all = cell(6,1);
+ce_coculture = [0, 0, 0, 0.66, 0.66, 0.66];  % 2 treatments × 3 ratios
+ratio_labels = {'75/25 S/R', '50/50 S/R', '25/75 S/R'};
+
+%organize data with their different replicates
+for i = 1:6
+    coculture_data{i} = readtable(coculture_files{i});
+    S_raw_all{i} = [coculture_data{i}.S_Rep1, coculture_data{i}.S_Rep2, coculture_data{i}.S_Rep3];
+    R_raw_all{i} = [coculture_data{i}.R_Rep1, coculture_data{i}.R_Rep2, coculture_data{i}.R_Rep3];
+end
+t_coculture = coculture_data{1}.Day;
+
+% Logical mask for days 0–10 (inclusive)
+idx_0_10 = (t_coculture >= 0) & (t_coculture <= 10);
+
+% Downsampled time vector
+t_coculture_10 = t_coculture(idx_0_10);
+
+% Downsample S and R for each condition
+S_raw_10_all = cell(6,1);
+R_raw_10_all = cell(6,1);
+for i = 1:6
+    S_raw_10_all{i} = S_raw_all{i}(idx_0_10, :);
+    R_raw_10_all{i} = R_raw_all{i}(idx_0_10, :);
+end
+
+
+%Import mono-culture data and format it 
+%%%Sensitive 
+monoS_files = {'/blue/ferrallm/01_analysis/adelpinoherrera_OvCa-Aim2-MathModelingMATLAB/Tyk/clean_parameterization/data/Tyk_Untreated_40k_cellsinwell.csv',
+    '/blue/ferrallm/01_analysis/adelpinoherrera_OvCa-Aim2-MathModelingMATLAB/Tyk/clean_parameterization/data/Tyk_IC50_0.66um_40k_cellsinwell.csv',
+    '/blue/ferrallm/01_analysis/adelpinoherrera_OvCa-Aim2-MathModelingMATLAB/Tyk/clean_parameterization/data/Tyk_IC75_0.12um_40k_cellsinwell.csv',
+    '/blue/ferrallm/01_analysis/adelpinoherrera_OvCa-Aim2-MathModelingMATLAB/Tyk/clean_parameterization/data/Tyk_IC25_0.85um_40k_cellsinwell.csv'};
+ce_mono_S = [0.00, 0.66, 0.12, 0.85];
+monoS_labels = {'Ce=0.66', 'Ce=0.12', 'Ce=0.85'};
+
+monoS_data = cell(4,1);
+S_mono_all = cell(4,1);
+
+for i = 1:4
+    monoS_data{i} = readtable(monoS_files{i});
+    S_mono_all{i} = [monoS_data{i}.Rep1, monoS_data{i}.Rep2, monoS_data{i}.Rep3];
+end
+t_mono_S = monoS_data{1}.Day;
+idx_0_10_mono = (t_mono_S >= 0) & (t_mono_S <= 10);
+t_mono_S_10 = t_mono_S(idx_0_10_mono);
+
+S_mono_10_all = cell(4,1);
+for i = 1:4
+    S_mono_10_all{i} = S_mono_all{i}(idx_0_10_mono, :);
+end
+
+%%%Resistant 
+monoR_files = {'/blue/ferrallm/01_analysis/adelpinoherrera_OvCa-Aim2-MathModelingMATLAB/Tyk/clean_parameterization/data/Tykcpr_Untreated_40k_cellsinwell.csv',
+    '/blue/ferrallm/01_analysis/adelpinoherrera_OvCa-Aim2-MathModelingMATLAB/Tyk/clean_parameterization/data/Tykcpr_IC50_0.66um_40k_cellsinwell.csv',
+    '/blue/ferrallm/01_analysis/adelpinoherrera_OvCa-Aim2-MathModelingMATLAB/Tyk/clean_parameterization/data/Tykcpr_IC75_0.12um_40k_cellsinwell.csv',
+    '/blue/ferrallm/01_analysis/adelpinoherrera_OvCa-Aim2-MathModelingMATLAB/Tyk/clean_parameterization/data/Tykcpr_IC25_0.85um_40k_cellsinwell.csv'};
+
+ce_mono_R = [0.0, 0.66, 0.12, 0.85];
+
+monoR_data = cell(4,1);
+R_mono_all = cell(4,1);
+
+for i = 1:4
+    monoR_data{i} = readtable(monoR_files{i});
+    R_mono_all{i} = [monoR_data{i}.Rep1, monoR_data{i}.Rep2, monoR_data{i}.Rep3];
+end
+t_mono_R = monoR_data{1}.Day;
+idx_0_10_R = (t_mono_R >= 0) & (t_mono_R <= 10);
+t_mono_R_10 = t_mono_R(idx_0_10_R);
+
+R_mono_10_all = cell(4,1);
+for i = 1:4
+    R_mono_10_all{i} = R_mono_all{i}(idx_0_10_R, :);
+end
+
+%%%Fixed parameter from estimating with only shared K 
+IC50S = 1.974574;
+
+alphaR = 0.0006;
+IC50R = 4.210567;
+
+%Estimate for parameters rS, K, alphaS, rR
+p0 = [0.6, 500000.0, 0.16, ... %rS, K, alphaS
+      0.5]; %rR
+lb = [0.001, 300000.0, 0.001, ...
+      0.0001];
+ub = [20.0, 3000000.0, 20.0, ...
+      20.0];
+
+res_fun_joint = @(p) joint_residuals_coculture_mono_sens2_m14( ...
+    p, IC50S, alphaR, IC50R, ...
+    t_coculture_10, S_raw_10_all, R_raw_10_all, ce_coculture, ...
+    t_mono_S_10, S_mono_10_all, ce_mono_S, ...
+    t_mono_R_10, R_mono_10_all, ce_mono_R);
+
+problem_joint = createOptimProblem('lsqnonlin', ...
+    'x0', p0, ...
+    'objective', res_fun_joint, ...
+    'lb', lb, ...
+    'ub', ub);
+
+ms_joint = MultiStart('UseParallel', true, 'Display', 'iter');
+nStarts = 200;
+
+[hat_joint, resnorm_joint] = run(ms_joint, problem_joint, nStarts);
+
+fprintf('Joint fit (co-culture + mono-culture, 10 days)\n');
+fprintf('Fitted rS = %.4f\n', hat_joint(1));
+fprintf('Fitted K  = %.4f\n', hat_joint(2));
+fprintf('Fitted alphaS = %.4f\n', hat_joint(3));
+fprintf('Fitted rR = %.4f\n', hat_joint(4));
+fprintf('Sum of squared residuals = %.2f\n', resnorm_joint);
+% 198 out of 200 local solver runs converged with a positive local solver exitflag.
+% Joint fit (co-culture + mono-culture, 10 days)
+% Fitted rS = 0.6066
+% Fitted K  = 469570.6732
+% Fitted alphaS = 0.1713
+% Fitted rR = 0.6454
+% Sum of squared residuals = 4201072662419.39
+
+
+% Run lsqnonlin separately to get Jacobian using MultiStart solution as initial guess
+[p_final, resnorm_final, residual_final, exitflag, output_final, lambda_final, J] = ...
+lsqnonlin(res_fun_joint, hat_joint, lb, ub);
+
+% Compute 95% confidence intervals
+ci = nlparci(p_final, residual_final, 'jacobian', J);
+
+% Print confidence intervals
+fprintf('95 Confidence Intervals:\n')
+fprintf('rS: [%.4f, %.4f]\n', ci(1,1), ci(1,2));
+fprintf('K: [%.4f, %.4f]\n', ci(2,1), ci(2,2));
+fprintf('alphaS: [%.4f, %.4f]\n', ci(3,1), ci(3,2));
+fprintf('rR: [%.4f, %.4f]\n', ci(4,1), ci(4,2));
+% 95 Confidence Intervals:
+% rS: [0.5626, 0.6506]
+% K: [447902.8658, 491238.1939]
+% alphaS: [0.1435, 0.1991]
+% rR: [0.6047, 0.6862]
+
+[~, BIC_info] = joint_residuals_coculture_mono_sens2_m14( ...
+    hat_joint, IC50S, alphaR, IC50R, ...
+    t_coculture_10, S_raw_10_all, R_raw_10_all, ce_coculture, ...
+    t_mono_S_10, S_mono_10_all, ce_mono_S, ...
+    t_mono_R_10, R_mono_10_all, ce_mono_R);
+
+fprintf('nBIC summary:\n');
+fprintf('  Co-culture = %.2f\n', BIC_info.co);
+fprintf('  Mono S     = %.2f\n', BIC_info.monoS);
+fprintf('  Mono R     = %.2f\n', BIC_info.monoR);
+fprintf('  Total      = %.2f\n', BIC_info.total);
+
+% nBIC summary:
+%   Co-culture = 8796.06
+%   Mono S     = 3047.20
+%   Mono R     = 3061.03
+%   Total      = 14924.89
+
+%co-culture plot
+figure;
+for i = 1:6
+    S_raw = S_raw_10_all{i};
+    R_raw = R_raw_10_all{i};
+    [nTimes, nReps] = size(S_raw);
+
+    S_mod_all = zeros(nTimes, nReps);
+    R_mod_all = zeros(nTimes, nReps);
+
+    for j = 1:nReps
+        S0 = S_raw(1,j);
+        R0 = R_raw(1,j);
+
+        [S_mod, R_mod] = simulate_coculture_all_sens2_m14( ...
+            t_coculture_10, S0, R0, ...
+            hat_joint(1), hat_joint(2), hat_joint(3), IC50S, ...
+            hat_joint(4), alphaR, IC50R, ce_coculture(i));
+
+        S_mod_all(:,j) = S_mod;
+        R_mod_all(:,j) = R_mod;
+    end
+
+    S_mean = mean(S_raw, 2);
+    S_sd   = std(S_raw, 0, 2);
+    R_mean = mean(R_raw, 2);
+    R_sd   = std(R_raw, 0, 2);
+
+    S_mod_mean = mean(S_mod_all, 2);
+    R_mod_mean = mean(R_mod_all, 2);
+    Tot_mean = S_mean + R_mean;
+    Tot_mod_mean = S_mod_mean + R_mod_mean;
+
+
+writematrix([t_coculture_10, S_mod_all], ...
+    fullfile(outdir, sprintf('S_sim_i%d_Ce%.2f_top4param_m14_10days.csv', i, ce_coculture(i))));
+
+writematrix([t_coculture_10, R_mod_all], ...
+    fullfile(outdir, sprintf('R_sim_i%d_Ce%.2f_top4param_m14_10days.csv', i, ce_coculture(i))));
+
+
+    subplot(2,3,i); hold on;
+
+    Sdata = errorbar(t_coculture_10, S_mean, S_sd, 'r.', 'MarkerSize', 12, 'LineStyle', 'none');
+    Rdata = errorbar(t_coculture_10, R_mean, R_sd, 'g.', 'MarkerSize', 12, 'LineStyle', 'none');
+    Tdata = plot(t_coculture_10, Tot_mean, 'b.', 'MarkerSize', 12);
+
+    Smodel = plot(t_coculture_10, S_mod_mean, 'r-', 'LineWidth', 2);
+    Rmodel = plot(t_coculture_10, R_mod_mean, 'g-', 'LineWidth', 2);
+    Tmodel = plot(t_coculture_10, Tot_mod_mean, 'b-', 'LineWidth', 2);
+
+    title(sprintf('Ce=%.2f, %s', ce_coculture(i), ratio_labels{mod(i-1,3)+1}));
+    xlabel('Time (days)');
+    ylabel('Cell count');
+    ylim([0 600000]);
+    grid on;
+    legend([Sdata(1), Rdata(1), Tdata(1), Smodel(1), Rmodel(1), Tmodel(1)], ...
+        {'S data','R data','Total data','S model','R model','Total model'}, ...
+        'Location','best');
+end
+sgtitle(sprintf('rS = %.3f, K = %.3f, alphaS = %.3f, rR = %.3f', ...
+    hat_joint(1), hat_joint(2), hat_joint(3), hat_joint(4)));
+
+saveas(gcf, fullfile(outdir, 'co-culture_Tyk_ALLdata_ALLtreat_ALLsensitivities_sens2_m14_constD_10days_model10.png'));
+
+%sensitive plot
+figure;
+for i = 1:4
+    subplot(2,2,i); hold on;
+
+    S_raw = S_mono_10_all{i};
+    [nTimes, nReps] = size(S_raw);
+
+    plot(t_mono_S_10, S_raw, 'ko', 'MarkerFaceColor', [0.8 0.8 0.8], 'MarkerSize', 6);
+
+    S_fit_all = zeros(nTimes, nReps);
+    for j = 1:nReps
+        S0 = S_raw(1,j);
+        S_fit_all(:,j) = simulate_mono_sens2_m14( ...
+            t_mono_S_10, S0, hat_joint(1), hat_joint(2), hat_joint(3), ...
+            IC50S, ce_mono_S(i));
+    end
+
+    S_fit_mean = mean(S_fit_all, 2);
+    plot(t_mono_S_10, S_fit_mean, 'r-', 'LineWidth', 3);
+
+    title(sprintf('Sensitive mono, Ce = %.2f', ce_mono_S(i)));
+    xlabel('Time (days)');
+    ylabel('Sensitive cells');
+    ylim([0 600000]);
+    grid on;
+    legend('Replicates', 'Model fit', 'Location', 'best');
+end
+sgtitle(sprintf('Joint fit: rS = %.3f, K = %.3f, alphaS = %.3f', ...
+    hat_joint(1), hat_joint(2), hat_joint(3)));
+
+saveas(gcf, fullfile(outdir, 'co-culture_Tyk_ALLdata_ALLtreat_ALLsens_ONLYSensitive_sens2_m14_constD_10days_model10.png'));
+
+%Resistant plot 
+figure;
+for i = 1:4
+    subplot(2,2,i); hold on;
+
+    R_raw = R_mono_10_all{i};
+    [nTimes, nReps] = size(R_raw);
+
+    plot(t_mono_R_10, R_raw, 'ko', 'MarkerFaceColor', [0.8 0.8 0.8], 'MarkerSize', 6);
+
+    R_fit_all = zeros(nTimes, nReps);
+    for j = 1:nReps
+        R0 = R_raw(1,j);
+        R_fit_all(:,j) = simulate_mono_res_sens2_m14( ...
+            t_mono_R_10, R0, hat_joint(4), hat_joint(2), alphaR,...
+            IC50R, ce_mono_R(i));
+    end
+
+    R_fit_mean = mean(R_fit_all, 2);
+    plot(t_mono_R_10, R_fit_mean, 'g-', 'LineWidth', 3);
+
+    title(sprintf('Resistant mono, Ce = %.2f', ce_mono_R(i)));
+    xlabel('Time (days)');
+    ylabel('Resistant cells');
+    ylim([0 600000]);
+    grid on;
+    legend('Replicates', 'Model fit', 'Location', 'best');
+end
+sgtitle(sprintf('Joint fit: rR = %.3f, K = %.3f, alphaR = %.3f', ...
+    hat_joint(4), hat_joint(2), alphaR));
+
+saveas(gcf, fullfile(outdir, 'co-culture_Tyk_ALLdata_ALLtreat_ALLsens_ONLYResistant_sens2_m14_constD_10days_model10.png'));
+
+
+%calculate R squared values 
+%Read actual data first
+coculture_files = {'/blue/ferrallm/01_analysis/adelpinoherrera_OvCa-Aim2-MathModelingMATLAB/Tyk/clean_parameterization/data/ce0_75S25R_cellsinwell.csv',
+    '/blue/ferrallm/01_analysis/adelpinoherrera_OvCa-Aim2-MathModelingMATLAB/Tyk/clean_parameterization/data/ce0_50S50R_cellsinwell.csv',
+    '/blue/ferrallm/01_analysis/adelpinoherrera_OvCa-Aim2-MathModelingMATLAB/Tyk/clean_parameterization/data/ce0_25S75R_cellsinwell.csv',
+    '/blue/ferrallm/01_analysis/adelpinoherrera_OvCa-Aim2-MathModelingMATLAB/Tyk/clean_parameterization/data/ce1_75S25R_cellsinwell.csv',
+    '/blue/ferrallm/01_analysis/adelpinoherrera_OvCa-Aim2-MathModelingMATLAB/Tyk/clean_parameterization/data/ce1_50S50R_cellsinwell.csv',
+    '/blue/ferrallm/01_analysis/adelpinoherrera_OvCa-Aim2-MathModelingMATLAB/Tyk/clean_parameterization/data/ce1_25S75R_cellsinwell.csv'}
+
+coculture_data = cell(6,1);
+S_raw_all = cell(6,1); R_raw_all = cell(6,1);
+ce_coculture = [0, 0, 0, 0.66, 0.66, 0.66];  % 2 treatments × 3 ratios
+ratio_labels = {'75/25 S/R', '50/50 S/R', '25/75 S/R'};
+
+%organize data with their different replicates
+for i = 1:6
+    coculture_data{i} = readtable(coculture_files{i});
+    S_raw_all{i} = [coculture_data{i}.S_Rep1, coculture_data{i}.S_Rep2, coculture_data{i}.S_Rep3];
+    R_raw_all{i} = [coculture_data{i}.R_Rep1, coculture_data{i}.R_Rep2, coculture_data{i}.R_Rep3];
+end
+t_coculture = coculture_data{1}.Day;
+
+% Logical mask for days 0–10 (inclusive)
+idx_0_10 = (t_coculture >= 0) & (t_coculture <= 10);
+
+% Downsampled time vector
+t_coculture_10 = t_coculture(idx_0_10);
+
+% Downsample S and R for each condition
+S_raw_10_all = cell(6,1);
+R_raw_10_all = cell(6,1);
+for i = 1:6
+    S_raw_10_all{i} = S_raw_all{i}(idx_0_10, :);
+    R_raw_10_all{i} = R_raw_all{i}(idx_0_10, :);
+end
+
+
+
+%sensitive data
+Tyk_75_Ce0_all = S_raw_10_all{1};
+Tyk_75_Ce0_all = Tyk_75_Ce0_all(:);
+
+Tyk_50_Ce0_all = S_raw_10_all{2};
+Tyk_50_Ce0_all = Tyk_50_Ce0_all(:);
+
+Tyk_25_Ce0_all = S_raw_10_all{3};
+Tyk_25_Ce0_all = Tyk_25_Ce0_all(:);
+
+Tyk_75_Ce066_all = S_raw_10_all{4};
+Tyk_75_Ce066_all = Tyk_75_Ce066_all(:);
+
+Tyk_50_Ce066_all = S_raw_10_all{5};
+Tyk_50_Ce066_all = Tyk_50_Ce066_all(:);
+
+Tyk_25_Ce066_all = S_raw_10_all{6};
+Tyk_25_Ce066_all = Tyk_25_Ce066_all(:);
+
+%resistant data
+Tykcpr_75_Ce0_all = R_raw_10_all{1};
+Tykcpr_75_Ce0_all = Tykcpr_75_Ce0_all(:);
+
+Tykcpr_50_Ce0_all = R_raw_10_all{2};
+Tykcpr_50_Ce0_all = Tykcpr_50_Ce0_all(:);
+
+Tykcpr_25_Ce0_all = R_raw_10_all{3};
+Tykcpr_25_Ce0_all = Tykcpr_25_Ce0_all(:);
+
+Tykcpr_75_Ce066_all = R_raw_10_all{4};
+Tykcpr_75_Ce066_all = Tykcpr_75_Ce066_all(:);
+
+Tykcpr_50_Ce066_all = R_raw_10_all{5};
+Tykcpr_50_Ce066_all = Tykcpr_50_Ce066_all(:);
+
+Tykcpr_25_Ce066_all = R_raw_10_all{6};
+Tykcpr_25_Ce066_all = Tykcpr_25_Ce066_all(:);
+
+%read the predicted data
+%Sensitive, 75%, Ce=0.0
+Tyk_75_Ce0_predicted = readtable('/blue/ferrallm/01_analysis/adelpinoherrera_OvCa-Aim2-MathModelingMATLAB/Tyk/clean_parameterization/results/Tyk_coculture/S_sim_i1_Ce0.00_top4param_m14_10days.csv');
+Tyk_75_Ce0_predicted = table2array(Tyk_75_Ce0_predicted(:,2)); %only the second column 
+Tyk_75_Ce0_predicted = repmat(Tyk_75_Ce0_predicted,3,1); %repeat 3 times 
+
+SS_res_Tyk_75_Ce0 = sum((Tyk_75_Ce0_all - Tyk_75_Ce0_predicted).^2);
+SS_tot_Tyk_75_Ce0 = sum((Tyk_75_Ce0_all - mean(Tyk_75_Ce0_all)).^2);
+R2_Tyk_75_Ce0 = 1 - SS_res_Tyk_75_Ce0 / SS_tot_Tyk_75_Ce0;
+
+fprintf('R-squared for Tyk, Ce=0, 75: %.4f\n', R2_Tyk_75_Ce0);
+%R-squared for Tyk, Ce=0, 75: 0.8617
+
+%Sensitive, 50%, Ce=0.0
+Tyk_50_Ce0_predicted = readtable('/blue/ferrallm/01_analysis/adelpinoherrera_OvCa-Aim2-MathModelingMATLAB/Tyk/clean_parameterization/results/Tyk_coculture/S_sim_i2_Ce0.00_top4param_m14_10days.csv');
+Tyk_50_Ce0_predicted = table2array(Tyk_50_Ce0_predicted(:,2)); %only the second column 
+Tyk_50_Ce0_predicted = repmat(Tyk_50_Ce0_predicted,3,1); %repeat 3 times 
+
+SS_res_Tyk_50_Ce0 = sum((Tyk_50_Ce0_all - Tyk_50_Ce0_predicted).^2);
+SS_tot_Tyk_50_Ce0 = sum((Tyk_50_Ce0_all - mean(Tyk_50_Ce0_all)).^2);
+R2_Tyk_50_Ce0 = 1 - SS_res_Tyk_50_Ce0 / SS_tot_Tyk_50_Ce0;
+
+fprintf('R-squared for Tyk, Ce=0, 50: %.4f\n', R2_Tyk_50_Ce0);
+%R-squared for Tyk, Ce=0, 50: 0.8359
+
+%Sensitive, 25%, Ce=0.0
+Tyk_25_Ce0_predicted = readtable('/blue/ferrallm/01_analysis/adelpinoherrera_OvCa-Aim2-MathModelingMATLAB/Tyk/clean_parameterization/results/Tyk_coculture/S_sim_i3_Ce0.00_top4param_m14_10days.csv');
+Tyk_25_Ce0_predicted = table2array(Tyk_25_Ce0_predicted(:,2)); %only the second column 
+Tyk_25_Ce0_predicted = repmat(Tyk_25_Ce0_predicted,3,1); %repeat 3 times 
+
+%delete certain rows
+% rowsToRemove = [4,15,26];
+% Tyk_25_Ce0_all(rowsToRemove) = [];
+% Tyk_25_Ce0_predicted(rowsToRemove) = [];
+
+SS_res_Tyk_25_Ce0 = sum((Tyk_25_Ce0_all - Tyk_25_Ce0_predicted).^2);
+SS_tot_Tyk_25_Ce0 = sum((Tyk_25_Ce0_all - mean(Tyk_25_Ce0_all)).^2);
+R2_Tyk_25_Ce0 = 1 - SS_res_Tyk_25_Ce0 / SS_tot_Tyk_25_Ce0;
+
+fprintf('R-squared for Tyk, Ce=0, 25: %.4f\n', R2_Tyk_25_Ce0);
+%R-squared for Tyk, Ce=0, 25: 0.1964
+
+
+%Sensitive, 75%, Ce=0.66
+Tyk_75_Ce066_predicted = readtable('/blue/ferrallm/01_analysis/adelpinoherrera_OvCa-Aim2-MathModelingMATLAB/Tyk/clean_parameterization/results/Tyk_coculture/S_sim_i4_Ce0.66_top4param_m14_10days.csv');
+Tyk_75_Ce066_predicted = table2array(Tyk_75_Ce066_predicted(:,2)); %only the second column 
+Tyk_75_Ce066_predicted = repmat(Tyk_75_Ce066_predicted,3,1); %repeat 3 times 
+
+SS_res_Tyk_75_Ce066 = sum((Tyk_75_Ce066_all - Tyk_75_Ce066_predicted).^2);
+SS_tot_Tyk_75_Ce066 = sum((Tyk_75_Ce066_all - mean(Tyk_75_Ce066_all)).^2);
+R2_Tyk_75_Ce066 = 1 - SS_res_Tyk_75_Ce066 / SS_tot_Tyk_75_Ce066;
+
+fprintf('R-squared for Tyk, Ce=0.66, 75: %.4f\n', R2_Tyk_75_Ce066);
+%R-squared for Tyk, Ce=0.66, 75: -0.0837
+
+%Sensitive, 50%, Ce=0.66
+Tyk_50_Ce066_predicted = readtable('/blue/ferrallm/01_analysis/adelpinoherrera_OvCa-Aim2-MathModelingMATLAB/Tyk/clean_parameterization/results/Tyk_coculture/S_sim_i5_Ce0.66_top4param_m14_10days.csv');
+Tyk_50_Ce066_predicted = table2array(Tyk_50_Ce066_predicted(:,2)); %only the second column 
+Tyk_50_Ce066_predicted = repmat(Tyk_50_Ce066_predicted,3,1); %repeat 3 times 
+
+SS_res_Tyk_50_Ce066 = sum((Tyk_50_Ce066_all - Tyk_50_Ce066_predicted).^2);
+SS_tot_Tyk_50_Ce066 = sum((Tyk_50_Ce066_all - mean(Tyk_50_Ce066_all)).^2);
+R2_Tyk_50_Ce066 = 1 - SS_res_Tyk_50_Ce066 / SS_tot_Tyk_50_Ce066;
+
+fprintf('R-squared for Tyk, Ce=0.66, 50: %.4f\n', R2_Tyk_50_Ce066);
+%R-squared for Tyk, Ce=0.66, 50: 0.2794
+
+%Sensitive, 25%, Ce=0.66
+Tyk_25_Ce066_predicted = readtable('/blue/ferrallm/01_analysis/adelpinoherrera_OvCa-Aim2-MathModelingMATLAB/Tyk/clean_parameterization/results/Tyk_coculture/S_sim_i6_Ce0.66_top4param_m14_10days.csv');
+Tyk_25_Ce066_predicted = table2array(Tyk_25_Ce066_predicted(:,2)); %only the second column 
+Tyk_25_Ce066_predicted = repmat(Tyk_25_Ce066_predicted,3,1); %repeat 3 times 
+
+SS_res_Tyk_25_Ce066 = sum((Tyk_25_Ce066_all - Tyk_25_Ce066_predicted).^2);
+SS_tot_Tyk_25_Ce066 = sum((Tyk_25_Ce066_all - mean(Tyk_25_Ce066_all)).^2);
+R2_Tyk_25_Ce066 = 1 - SS_res_Tyk_25_Ce066 / SS_tot_Tyk_25_Ce066;
+
+fprintf('R-squared for Tyk, Ce=0.66, 25: %.4f\n', R2_Tyk_25_Ce066);
+%R-squared for Tyk, Ce=0.66, 25: -0.2760
+
+
+%Resistant, 75%, Ce=0.0
+Tykcpr_75_Ce0_predicted = readtable('/blue/ferrallm/01_analysis/adelpinoherrera_OvCa-Aim2-MathModelingMATLAB/Tyk/clean_parameterization/results/Tyk_coculture/R_sim_i1_Ce0.00_top4param_m14_10days.csv');
+Tykcpr_75_Ce0_predicted = table2array(Tykcpr_75_Ce0_predicted(:,2)); %only the second column 
+Tykcpr_75_Ce0_predicted = repmat(Tykcpr_75_Ce0_predicted,3,1); %repeat 3 times 
+
+SS_res_Tykcpr_75_Ce0 = sum((Tykcpr_75_Ce0_all - Tykcpr_75_Ce0_predicted).^2);
+SS_tot_Tykcpr_75_Ce0 = sum((Tykcpr_75_Ce0_all - mean(Tykcpr_75_Ce0_all)).^2);
+R2_Tykcpr_75_Ce0 = 1 - SS_res_Tykcpr_75_Ce0 / SS_tot_Tykcpr_75_Ce0;
+
+fprintf('R-squared for Tykcpr, Ce=0, 75: %.4f\n', R2_Tykcpr_75_Ce0);
+%R-squared for Tykcpr, Ce=0, 75: 0.6179
+
+%Resistant, 50%, Ce=0.0
+Tykcpr_50_Ce0_predicted = readtable('/blue/ferrallm/01_analysis/adelpinoherrera_OvCa-Aim2-MathModelingMATLAB/Tyk/clean_parameterization/results/Tyk_coculture/R_sim_i2_Ce0.00_top4param_m14_10days.csv');
+Tykcpr_50_Ce0_predicted = table2array(Tykcpr_50_Ce0_predicted(:,2)); %only the second column 
+Tykcpr_50_Ce0_predicted = repmat(Tykcpr_50_Ce0_predicted,3,1); %repeat 3 times 
+
+SS_res_Tykcpr_50_Ce0 = sum((Tykcpr_50_Ce0_all - Tykcpr_50_Ce0_predicted).^2);
+SS_tot_Tykcpr_50_Ce0 = sum((Tykcpr_50_Ce0_all - mean(Tykcpr_50_Ce0_all)).^2);
+R2_Tykcpr_50_Ce0 = 1 - SS_res_Tykcpr_50_Ce0 / SS_tot_Tykcpr_50_Ce0;
+
+fprintf('R-squared for Tykcpr, Ce=0, 50: %.4f\n', R2_Tykcpr_50_Ce0);
+%R-squared for Tykcpr, Ce=0, 50: 0.7174
+
+%Resistant, 25%, Ce=0.0
+Tykcpr_25_Ce0_predicted = readtable('/blue/ferrallm/01_analysis/adelpinoherrera_OvCa-Aim2-MathModelingMATLAB/Tyk/clean_parameterization/results/Tyk_coculture/R_sim_i3_Ce0.00_top4param_m14_10days.csv');
+Tykcpr_25_Ce0_predicted = table2array(Tykcpr_25_Ce0_predicted(:,2)); %only the second column 
+Tykcpr_25_Ce0_predicted = repmat(Tykcpr_25_Ce0_predicted,3,1); %repeat 3 times 
+
+SS_res_Tykcpr_25_Ce0 = sum((Tykcpr_25_Ce0_all - Tykcpr_25_Ce0_predicted).^2);
+SS_tot_Tykcpr_25_Ce0 = sum((Tykcpr_25_Ce0_all - mean(Tykcpr_25_Ce0_all)).^2);
+R2_Tykcpr_25_Ce0 = 1 - SS_res_Tykcpr_25_Ce0 / SS_tot_Tykcpr_25_Ce0;
+
+fprintf('R-squared for Tykcpr, Ce=0, 25: %.4f\n', R2_Tykcpr_25_Ce0);
+%R-squared for Tykcpr, Ce=0, 25: 0.6988
+
+
+%Resistant, 75%, Ce=0.66
+Tykcpr_75_Ce066_predicted = readtable('/blue/ferrallm/01_analysis/adelpinoherrera_OvCa-Aim2-MathModelingMATLAB/Tyk/clean_parameterization/results/Tyk_coculture/R_sim_i4_Ce0.66_top4param_m14_10days.csv');
+Tykcpr_75_Ce066_predicted = table2array(Tykcpr_75_Ce066_predicted(:,2)); %only the second column 
+Tykcpr_75_Ce066_predicted = repmat(Tykcpr_75_Ce066_predicted,3,1); %repeat 3 times 
+
+SS_res_Tykcpr_75_Ce066 = sum((Tykcpr_75_Ce066_all - Tykcpr_75_Ce066_predicted).^2);
+SS_tot_Tykcpr_75_Ce066 = sum((Tykcpr_75_Ce066_all - mean(Tykcpr_75_Ce066_all)).^2);
+R2_Tykcpr_75_Ce066 = 1 - SS_res_Tykcpr_75_Ce066 / SS_tot_Tykcpr_75_Ce066;
+
+fprintf('R-squared for Tykcpr, Ce=0.66, 75: %.4f\n', R2_Tykcpr_75_Ce066);
+%R-squared for Tykcpr, Ce=0.66, 75: 0.5271
+
+%Resistant, 50%, Ce=0.66
+Tykcpr_50_Ce066_predicted = readtable('/blue/ferrallm/01_analysis/adelpinoherrera_OvCa-Aim2-MathModelingMATLAB/Tyk/clean_parameterization/results/Tyk_coculture/R_sim_i5_Ce0.66_top4param_m14_10days.csv');
+Tykcpr_50_Ce066_predicted = table2array(Tykcpr_50_Ce066_predicted(:,2)); %only the second column 
+Tykcpr_50_Ce066_predicted = repmat(Tykcpr_50_Ce066_predicted,3,1); %repeat 3 times 
+
+SS_res_Tykcpr_50_Ce066 = sum((Tykcpr_50_Ce066_all - Tykcpr_50_Ce066_predicted).^2);
+SS_tot_Tykcpr_50_Ce066 = sum((Tykcpr_50_Ce066_all - mean(Tykcpr_50_Ce066_all)).^2);
+R2_Tykcpr_50_Ce066 = 1 - SS_res_Tykcpr_50_Ce066 / SS_tot_Tykcpr_50_Ce066;
+
+fprintf('R-squared for Tykcpr, Ce=0.66, 50: %.4f\n', R2_Tykcpr_50_Ce066);
+%R-squared for Tykcpr, Ce=0.66, 50: 0.7976
+
+%Resistant, 25%, Ce=0.66
+Tykcpr_25_Ce066_predicted = readtable('/blue/ferrallm/01_analysis/adelpinoherrera_OvCa-Aim2-MathModelingMATLAB/Tyk/clean_parameterization/results/Tyk_coculture/R_sim_i6_Ce0.66_top4param_m14_10days.csv');
+Tykcpr_25_Ce066_predicted = table2array(Tykcpr_25_Ce066_predicted(:,2)); %only the second column 
+Tykcpr_25_Ce066_predicted = repmat(Tykcpr_25_Ce066_predicted,3,1); %repeat 3 times 
+
+SS_res_Tykcpr_25_Ce066 = sum((Tykcpr_25_Ce066_all - Tykcpr_25_Ce066_predicted).^2);
+SS_tot_Tykcpr_25_Ce066 = sum((Tykcpr_25_Ce066_all - mean(Tykcpr_25_Ce066_all)).^2);
+R2_Tykcpr_25_Ce066 = 1 - SS_res_Tykcpr_25_Ce066 / SS_tot_Tykcpr_25_Ce066;
+
+fprintf('R-squared for Tykcpr, Ce=0.66, 25: %.4f\n', R2_Tykcpr_25_Ce066);
+%R-squared for Tykcpr, Ce=0.66, 25: 0.6956
+
